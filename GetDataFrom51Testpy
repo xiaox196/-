@@ -1,0 +1,121 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import requests
+from  bs4 import BeautifulSoup
+import  re
+import  mysql.connector
+import time
+
+
+page=set()
+
+def get(url):
+    # 构造头部
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36'}
+    # cookie
+    cook = {'td_cookie':'1242408366','xscdb_cookietime':'2592000','xscdb_auth':'085bvYexm3%2BzxEqClovVzer8Op8oGeiWCmLdc7qhI9OqJ4%2Bb1gzzag8Q4RNU7SPjisqemrKeMhSoUyfIgbxuQXutaEmi',
+            'looyu_id': '9a24a8f405bd001b6cf7d668c3195b0751_20001818%3A3', 'td_cookie': '1242384264', 'xscdb_supe_hash': 'c5b79kBYI%2B326qZllfnbRhzvWgpLYy8XTjRDzQQKpF3XXfJ%2FC65rtuaFAeA',
+            'supe_batch_html_refresh_items': '0_3715126', 'xscdb_supe_refresh_items': '0_3715126',
+            '_99_mon': '%5B0%2C0%2C0%5D', 'looyu_20001818': 'v%3Ac88c0ea9f63a1014fb02d098e60cf08340%2Cref%3A%2Cr%3A%2Cmon%3Ahttp%3A//m2425.looyu.com/monitor%2Cp0%3Ahttp%253A//www.51testing.com/article_windows.htm'}
+    data=requests.get(url=url, cookies=cook, headers=headers)
+    data.encoding = "gbk"
+    web_data=BeautifulSoup(data.text,'lxml')
+
+    # 测试资料
+    for link in web_data.find('div',{'class':'two_js_yw'}).findAll('a'):
+        if "href" in link.attrs:
+            if 'target' in link.attrs:
+                resul_url = link.attrs['href']
+                if '51t' in resul_url and 'search' not in resul_url and 'catid' not in resul_url:
+                    page.add(resul_url)
+                    print("爬虫地址："+resul_url)
+                    GetDownFile(resul_url)
+                    time.sleep(0.1)
+
+
+    # http://www.51testing.com/?action-category-catid-86
+    # for url in urls:
+    #     if "href" in url.attrs:
+    #         if url.attrs['href'] not in page:
+    #             link=url.attrs['href']
+    #             if '51t' in link and 'uid' not in link and 'http' in link and 'common.php' not in link and 'bbs' not in link and 'login' not in link and 'outsource' not in link and 'catid' in link:
+    #                 page.add(link)
+    #                 print("爬虫地址："+link)
+    #                 GetDownFile(link)
+    #                 time.sleep(0.1)
+    #                 get(link)
+
+def GetDownFile(url):
+    # 构造头部
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36'}
+    # cookie
+    cook = {'td_cookie': '1242408366', 'xscdb_cookietime': '2592000',
+            'xscdb_auth': '085bvYexm3%2BzxEqClovVzer8Op8oGeiWCmLdc7qhI9OqJ4%2Bb1gzzag8Q4RNU7SPjisqemrKeMhSoUyfIgbxuQXutaEmi',
+            'looyu_id': '9a24a8f405bd001b6cf7d668c3195b0751_20001818%3A3', 'td_cookie': '1242384264',
+            'xscdb_supe_hash': 'c5b79kBYI%2B326qZllfnbRhzvWgpLYy8XTjRDzQQKpF3XXfJ%2FC65rtuaFAeA',
+            'supe_batch_html_refresh_items': '0_3715126', 'xscdb_supe_refresh_items': '0_3715126',
+            '_99_mon': '%5B0%2C0%2C0%5D',
+            'looyu_20001818': 'v%3Ac88c0ea9f63a1014fb02d098e60cf08340%2Cref%3A%2Cr%3A%2Cmon%3Ahttp%3A//m2425.looyu.com/monitor%2Cp0%3Ahttp%253A//www.51testing.com/article_windows.htm'}
+    data = requests.get(url=url, cookies=cook, headers=headers)
+    data.encoding = "gbk"
+    web_data = BeautifulSoup(data.text, 'lxml')
+    urls = web_data.findAll('a')
+    titles=web_data.find_all('h3')
+    for url in urls:
+        if "href" in url.attrs:
+            web_link = url.attrs['href']
+            if len(titles)>0:
+                title = titles[0].text
+            else:
+                title="爬虫"
+            if '.pdf' in web_link:
+                 print("下载地址："+web_link)
+                 insert(web_link,title)
+            if '.doc' in web_link:
+                print("下载地址：" + web_link)
+                insert(web_link, title)
+            if '.xls' in web_link:
+                print("下载地址：" + web_link)
+                insert(web_link, title)
+
+            if '.zip' in web_link:
+                print("下载地址：" + web_link)
+                insert(web_link, title)
+
+
+def insert(text,title):
+    cnn = mysql.connector.connect(user="root", password="123456", host="127.0.0.1", database="mydata")
+    cursor=cnn.cursor()
+    cursor.execute("SELECT MAX(id) FROM test51file")
+    getcount=cursor.fetchall()
+    count=getcount[0][0]+1
+    insert_sql="INSERT INTO test51file (id,url,title ) VALUES('%s','%s','%s')"%(count,text,title)
+    cursor.execute(insert_sql)
+    cnn.commit();
+    cnn.close()
+
+
+if __name__ == "__main__":
+    count=0
+    # "http://pic.yesky.com/c/6_20771.shtml"
+    url5='http://www.51testing.com/html/85/category-catid-85'
+    url ='http://www.51testing.com/html/6/category-catid-6'
+    url4 = 'http://www.51testing.com/html/6/category-catid-6.html'
+    url3='http://www.51testing.com/html/78/n-3707878.html'
+    url1='http://www.51testing.com/html/26/n-3715126.html'
+    url6='http://www.51testing.com/html/84/category-catid-84'
+    url7='http://www.51testing.com/html/86/category-catid-86'
+    url8='http://www.51testing.com/html/82/category-catid-82'
+
+    for size in range(2,80):
+        count +=1
+        url2 =url8 +'-page-'+str(size)+'.html'
+        print(url2)
+        print(count)
+        get(url2)
+        time.sleep(0.2)
+    #
+    GetDownFile(url3)
+
